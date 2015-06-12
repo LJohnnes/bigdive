@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Untitled Document</title>
+    <meta charset="UTF-8">
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+    
+    <script src="d3.min.js"></script>
+</head>
+<body>
+    
+    <svg height=700 width=1800></svg>
+    <br />
+    <select id="sports"></select>
+    
+    <script>
+        
+        function sumMedals(d, key){
+                
+               return d3.sum(d, function(c){
+                   return +c[key]
+               })
+        }
+        
+        d3.csv('olympics_2012.csv', function(olympics){
+            
+            console.log(olympics)
+            
+            olympics.sort(function(a, b){
+                return d3.ascending(+a.Weight, +b.Weight)
+            })
+            olympics = olympics.filter(function(d){
+                return d.Weight != ''
+            })
+            
+            
+            var maxWeight = d3.max(olympics, function(d){
+                return +d.Weight
+            })
+            var minWeight = d3.min(olympics, function(d){
+                return +d.Weight
+            })
+            
+            console.log("min weight: " + minWeight)
+            
+            var scaleX = d3.scale.linear()
+                .domain([minWeight, maxWeight])
+                .range([0, 1800])
+            
+            var scaleY = d3.scale.linear()
+                .domain([0, 15])
+                .range([700, 0])
+            
+            
+            
+            console.log(olympics)
+            
+            var sport = d3.nest()
+                .key(function(d){
+                    return d.Sport;
+                })
+                .key(function(d){
+                    return +d.Weight;
+                })
+
+                .rollup(function(d){
+                    return {
+                        gold_medals:sumMedals(d, 'Gold'),
+                        silver_medals:sumMedals(d, 'Silver'),
+                        bronze_medals:sumMedals(d, 'Bronze'),
+                    }
+                })
+                .entries(olympics)
+  
+            
+                console.log(sport[1])
+                
+                var hg = 700
+                var sc = 80
+                
+                
+                function drawMedalRect(groups, color) {
+                       groups.append('rect')
+                        .attr('width', 7)
+                        .style('fill', function(){
+                           if (color == 'bronze'){
+                               return 'brown'
+                               }
+                           else {
+                               return color
+                           }
+                       })
+                        .attr('height', 0)
+                        .attr('y', hg)
+                        .transition()
+                        .duration(1000)
+                        .attr('height', function(d, i){
+                            return d.values[color + '_medals']*sc
+                        })
+                        .attr('y', function(d, i){
+                           if (color == 'gold'){
+                               return hg-d.values.gold_medals*sc
+                           }
+                           else if (color == 'silver'){
+                               return hg-(d.values.gold_medals+d.values.silver_medals)*sc
+                           }
+                           else if (color == 'bronze'){
+                               return hg-(d.values.gold_medals+d.values.silver_medals+d.values.bronze_medals)*sc
+                           }
+                        })
+                }
+
+            
+                
+                var legend = d3.select('svg').append('g')
+                    .attr('class', 'limitLine')
+                    .attr('transform', 'translate(1400, 300)')
+            
+                legend.append('line')
+                    .attr('class', 'limitLine')
+                    .attr('x1', 0)
+                    .attr('x2', 100)
+                    .attr('y1', 0)
+                    .attr('y2', 0)
+                    .style('stroke', 'black')
+                    .style('stroke-width', 2)
+                
+                legend.append('line')
+                    .attr('class', 'limitLine')
+                    .attr('x1', 0)
+                    .attr('x2', 0)
+                    .attr('y1', 0)
+                    .attr('y2', -100)
+                    .style('stroke', 'black')
+                    .style('stroke-width', 2)
+                
+                legend.append('text')
+                    .attr('class', 'limitLine')
+                    .text('weight')
+                    .attr('x', 20)
+                    .attr('y', 20)
+                
+                legend.append('text')
+                    .attr('class', 'limitLine')
+                    .text('# of medals')
+                    .attr('transform', 'rotate(-90)')
+                    .attr('x', 15)
+                    .attr('y', -20)
+                
+                legend.append('text')
+                    .attr('class', 'limitLine')
+                    .text('Olympic Games 2012')
+                    .attr('x', 0)
+                    .attr('y', -200)
+                    .attr('font-size', 40)
+                
+                legend.selectAll('rect')
+                    .data(['gold', 'silver', 'bronze'])
+                    .enter()
+                    .append('rect')
+                    .attr('class', 'limitLine')
+                    .attr('x', 20)
+                    .attr('y', function(d,i){
+                        return -i*30-40
+                    })
+                    .attr('height', 20)
+                    .attr('width', 20)
+                    .style('fill', function(d,i){
+                        if (i == 2) {
+                            return 'brown'
+                        }
+                        else {
+                            return d
+                        }
+                    })
+                    
+                
+                var limitLineGroups = d3.select('svg').selectAll('g')
+                    .data(['staticLine', 'movingLine'])
+                    .enter()
+                    .append('g')
+                    .attr('class', function(d){
+                        return 'limitLine ' + d
+                    })
+                    .attr('transform', 'translate(' + scaleX(maxWeight) + ', 400)')
+                
+                limitLineGroups.append('line')
+                    .attr('class', 'limitLine')
+                    .attr('x1', 0)
+                    .attr('x2', 0)
+                    .attr('y1', 0)
+                    .attr('y2', 300)
+                    .style('stroke', 'black')
+                    .style('stroke-width', 2)
+                
+                limitLineGroups.append('text')
+                    .attr('class', 'limitLine')
+                    .text('240kg')
+                    .style("text-anchor","end") 
+                    .attr('x', -5)
+                    .attr('y', 0)
+                
+            
+                function change() {
+
+                    var selectedIndex = select.property('selectedIndex')
+
+                    
+                    d3.select("svg").selectAll("*:not(.limitLine)").remove(); 
+                    
+                    var maxInSet = d3.max(sport[selectedIndex].values, function(d){
+                        
+                        if (d.values.bronze_medals == 0 && d.values.silver_medals == 0 && d.values.gold_medals == 0){
+                            return 0
+                        }
+                        else {
+                            return +d.key
+                        }
+                    })
+                    
+                    
+                    d3.select('.movingLine')
+                        .transition()
+                        .duration(1000)
+                        .attr('transform', 'translate(' + scaleX(maxInSet+1) + ', 400)')
+                        .select('text')
+                        .transition()
+                        .duration(500)
+                        .delay(500)
+                        .style('text-anchor', 'start')
+                        .attr('x', 10)
+                        .text(maxInSet + 'kg')
+                    
+                    var groups = d3.select('svg').selectAll('g')
+                        .data(sport[selectedIndex].values)
+                        .enter()
+                        .append('g')
+                        .attr('transform', function(d,i){
+                            return 'translate(' + scaleX(d.key) + ',0)'
+                            });
+                    
+                    drawMedalRect(groups, 'gold')
+                    drawMedalRect(groups, 'silver')
+                    drawMedalRect(groups, 'bronze')
+                
+                }
+                
+            
+                var select  = d3.select("#sports").on("change", change)
+                var options = select.selectAll('option')
+                    .data(sport)
+                    .enter()
+                    .append("option")
+                    .text(function(d) { 
+                        return d.key;
+                    })
+
+                
+            console.log(sport)
+        })
+        
+    </script>
+    
+
+</body>
+</html>
